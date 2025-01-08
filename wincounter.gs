@@ -1,4 +1,4 @@
-function onEditTrigger(e) {
+function onEdit(e) {
   // 編集イベントの情報を取得
   const range = e.range;
   const sheet = range.getSheet();
@@ -60,9 +60,6 @@ function onEditTrigger(e) {
 
     // 結果を「Stats」シートに出力
     outputResults(sheet, totalWins, totalLosses, winRate, targetName);
-
-    // ユーザーに通知を表示
-    showNotification(sheet, targetName, totalWins, totalLosses, winRate);
   }
 }
 
@@ -91,14 +88,4 @@ function clearResults(sheet) {
 
   // 既存の結果をクリア（2行目以降）
   sheet.getRange("A3:D").clearContent();
-}
-
-// 通知を表示する関数
-function showNotification(sheet, name, wins, losses, rate) {
-  const ui = SpreadsheetApp.getUi();
-  ui.alert(
-    "計算完了",
-    `対象: ${name}\n勝ち数: ${wins}\n負け数: ${losses}\n勝率: ${rate.toFixed(2)}%`,
-    ui.ButtonSet.OK
-  );
 }
