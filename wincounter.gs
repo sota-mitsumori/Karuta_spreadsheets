@@ -1,91 +1,71 @@
 function onEdit(e) {
-  // 編集イベントの情報を取得
-  const range = e.range;
-  const sheet = range.getSheet();
-  const editedCell = range.getA1Notation();
-  const sheetName = sheet.getName();
+  updateStats();  // Automatically updates whenever any sheet is edited
+}
 
-  // 結果を出力するシート名を指定
-  const outputSheetName = "Stats"; // シート名が「Stats」であることを確認してください
+function updateStats() {
+  const outputSheetName = "Stats";
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const outputSheet = ss.getSheetByName(outputSheetName);
+  const sheets = ss.getSheets();
 
-  // 編集されたシートが「Stats」であり、編集されたセルがA3であるかを確認
-  if (sheetName === outputSheetName && editedCell === "A3") {
-    // セルA3から対象の名前を取得
-    const targetName = sheet.getRange("A3").getValue().toString().trim();
+  const winSymbol = "○";
+  const lossSymbol = "×";
 
-    // 名前が空の場合、結果をクリアして終了
-    if (targetName === "") {
-      clearResults(sheet);
-      return;
-    }
+  let nameStats = {};
 
-    // 勝ちと負けを示すシンボル
-    const winSymbol = "○";
-    const lossSymbol = "×";
+  // Loop through all sheets (excluding "Stats")
+  sheets.forEach(sheet => {
+    if (sheet.getName() === outputSheetName) return;
 
-    // スプレッドシート全体を取得
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheets = ss.getSheets();
+    const data = sheet.getRange("A4:Z").getValues();
 
-    let totalWins = 0;
-    let totalLosses = 0;
+    data.forEach(row => {
+      // A列にある名前を探索
+      const name = row[0].toString().trim();
+      if (!name) return;
 
-    // すべてのシートをループ（「Stats」シートを除く）
-    sheets.forEach((sht) => {
-      if (sht.getName() === outputSheetName) {
-        return; // 「Stats」シートはスキップ
+      // initiate the array
+      if (!nameStats[name]) {
+        nameStats[name] = { wins: 0, losses: 0 };
       }
 
-      const data = sht.getDataRange().getValues();
-
-      data.forEach(row => {
-        // 行の最初のセルが対象の名前か確認
-        if (row[0].toString().trim() === targetName) {
-          // 列B～J（インデックス1～9）をチェック
-          for (let i = 1; i < Math.min(row.length, 20); i++) {
-            const cell = row[i].toString().trim();
-            if (cell === winSymbol) {
-              totalWins += 1;
-            } else if (cell === lossSymbol) {
-              totalLosses += 1;
-            }
-          }
+      // Check columns B to Z for win/loss symbols
+      for (let i = 1; i < Math.min(row.length, 26); i++) {
+        const cell = row[i].toString().trim();
+        if (cell === winSymbol) {
+          nameStats[name].wins += 1;
+        } else if (cell === lossSymbol) {
+          nameStats[name].losses += 1;
         }
-      });
+      }
     });
+  });
 
-    // 勝率の計算
-    const totalMatches = totalWins + totalLosses;
-    const winRate = totalMatches > 0 ? (totalWins / totalMatches) * 100 : 0;
-
-    // 結果を「Stats」シートに出力
-    outputResults(sheet, totalWins, totalLosses, winRate, targetName);
+  // Convert nameStats to an array and calculate win rates
+  let resultArray = [];
+  for (let [name, stats] of Object.entries(nameStats)) {
+    const totalMatches = stats.wins + stats.losses;
+    const winRate = totalMatches > 0 ? (stats.wins / totalMatches) * 100 : 0;
+    resultArray.push([name, stats.wins, stats.losses, winRate]);
   }
+
+  // Sort the array by win rate in descending order, then by number of wins if win rates are equal
+  resultArray.sort((a, b) => {
+    if (b[3] === a[3]) {
+      return b[1] - a[1];  // Sort by wins if win rates are equal
+    }
+    return b[3] - a[3];  // Sort by win rate
+  });
+
+  // Clear existing results in "Stats" sheet
+  outputSheet.getRange("A3:D").clearContent();
+
+  // Set headers
+  outputSheet.getRange("A2:D2").setValues([["名前", "勝ち数", "負け数", "勝率"]]);
+
+  // Write sorted results to the "Stats" sheet
+  outputSheet.getRange(3, 1, resultArray.length, 4).setValues(
+    resultArray.map(row => [row[0], row[1], row[2], row[3].toFixed(2) + "%"])
+  );
 }
 
-// 結果を「Stats」シートに出力する関数
-function outputResults(sheet, wins, losses, rate, name) {
-  // ヘッダーの設定
-  sheet.getRange("A2").setValue("名前");
-  sheet.getRange("B2").setValue("勝ち数");
-  sheet.getRange("C2").setValue("負け数");
-  sheet.getRange("D2").setValue("勝率");
-
-  // 既存の結果をクリア（2行目以降）
-  sheet.getRange("A3:D").clearContent();
-
-  // 結果の入力
-  sheet.getRange("A3").setValue(name);
-  sheet.getRange("B3").setValue(wins);
-  sheet.getRange("C3").setValue(losses);
-  sheet.getRange("D3").setValue(rate.toFixed(2) + "%");
-}
-
-// 結果をクリアする関数
-function clearResults(sheet) {
-  // ヘッダーの設定（保持）
-  sheet.getRange("A2:D2").setValues([["名前", "勝ち数", "負け数", "勝率"]]);
-
-  // 既存の結果をクリア（2行目以降）
-  sheet.getRange("A3:D").clearContent();
-}
