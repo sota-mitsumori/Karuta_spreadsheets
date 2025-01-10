@@ -1,5 +1,5 @@
 function onEdit(e) {
-  updateStats();  // Automatically updates whenever any sheet is edited
+  updateStats();  // 変更があったら勝敗の統計を自動更新
 }
 
 function updateStats() {
@@ -8,6 +8,7 @@ function updateStats() {
   const outputSheet = ss.getSheetByName(outputSheetName);
   const sheets = ss.getSheets();
 
+　// 勝敗の記号 (pull-down format is preferred to be used)
   const winSymbol = "○";
   const lossSymbol = "×";
 
@@ -17,6 +18,7 @@ function updateStats() {
   sheets.forEach(sheet => {
     if (sheet.getName() === outputSheetName) return;
 
+    // データの取得先
     const data = sheet.getRange("A4:Z").getValues();
 
     data.forEach(row => {
